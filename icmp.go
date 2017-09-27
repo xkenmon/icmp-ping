@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -32,14 +33,19 @@ type CountInfo struct {
 const defaultIP = "119.28.74.45"
 
 var ipPing string
+var t int
 
 func main() {
-	for _, ipstr := range os.Args {
-		index := strings.Index(ipstr, "ip=")
-		if index != -1 {
-			ipPing = ipstr[index+3:]
-			break
+	for _, str := range os.Args {
+		indexIP := strings.Index(str, "ip=")
+		if indexIP != -1 {
+			ipPing = str[indexIP+3:]
 		}
+		indext := strings.Index(str, "t=")
+		if indext != -1 {
+			t, _ = strconv.Atoi(str[indext+2:])
+		}
+
 	}
 	if ipPing == "" {
 		// fmt.Println("please input ping Addr, like \"ping=XXX.XXX.XXX.XXX\"")
@@ -47,6 +53,9 @@ func main() {
 		// time.Sleep(3e9)
 		// os.Exit(1)
 		ipPing = defaultIP
+	}
+	if t == 0 {
+		t = 5
 	}
 
 	info := PingIP(ipPing)
@@ -73,7 +82,7 @@ func PingIP(ipPing string) CountInfo {
 	}
 
 	recv := make([]byte, 40)
-	for i := 1; i < 6; i++ {
+	for i := t; i > 0; i-- {
 		fmt.Printf("正在 Ping %s 具有 32 字节的数据:\n", ipPing)
 		info.CountPkg++
 		icmpreq := getIcmpReq(uint16(i), uint16(i))
@@ -153,8 +162,8 @@ func ChecksumICMP(icmp ICMP) uint16 {
 
 func printInfo(info CountInfo) {
 	rcvPkg := info.CountPkg - info.LossPkg
-	loss := float32(rcvPkg) / float32(info.CountPkg)
+	lossRate := float32(info.LossPkg) / float32(info.CountPkg)
 	fmt.Print("\n-------------统计信息--------------\n")
-	fmt.Printf("共发送了 %d 个包, %d 个包已接收, 丢包率：%.2f%%, 总时间：%.2fms\n", info.CountPkg, rcvPkg, loss, info.CountTime)
-	fmt.Printf("最大延时：%.2fms 最小延时：%.2fms 平均延时：%.2fms\n", info.MaxTime, info.MinTime, float32(info.CountTime)/float32(rcvPkg))
+	fmt.Printf("共发送了 %d 个包, %d 个包已接收, 丢包率：%.2f%%, 总时间：%.2fms\n", info.CountPkg, rcvPkg, lossRate*100, info.CountTime)
+	fmt.Printf("最大延时：%.2fms 最小延时：%.2fms 平均延时：%.2fms\n", info.MaxTime, info.MinTime, (float32(info.CountTime)-float32(info.LossPkg)*5)/float32(rcvPkg))
 }
