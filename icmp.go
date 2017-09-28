@@ -30,10 +30,10 @@ type CountInfo struct {
 	MaxTime   float32
 }
 
-const defaultIP = "119.28.74.45"
-
 var ipPing string
 var t int
+var timeout int
+var interval int
 
 func main() {
 	for _, str := range os.Args {
@@ -45,17 +45,29 @@ func main() {
 		if indext != -1 {
 			t, _ = strconv.Atoi(str[indext+2:])
 		}
-
+		indexTT := strings.Index(str, "timeout=")
+		if indexTT != -1 {
+			timeout, _ = strconv.Atoi(str[indexTT+8:])
+		}
+		indexIt := strings.Index(str, "interval=")
+		if indexIt != -1 {
+			interval, _ = strconv.Atoi(str[indexIt+9:])
+		}
 	}
 	if ipPing == "" {
 		// fmt.Println("please input ping Addr, like \"ping=XXX.XXX.XXX.XXX\"")
-		fmt.Printf("No \"ip\" Args,Default addr:%s\n", defaultIP)
+		fmt.Printf("No \"ip\" Args,Exiting\nUsage:\n\tip=\"remote ip\"\n\ttimeout=\"timeout(ms)default 3ms\"\n\tt=\"ping time\"\n")
 		// time.Sleep(3e9)
-		// os.Exit(1)
-		ipPing = defaultIP
+		os.Exit(1)
 	}
 	if t == 0 {
 		t = 5
+	}
+	if timeout == 0 {
+		timeout = 3000
+	}
+	if interval == 0 {
+		interval = 1
 	}
 
 	info := PingIP(ipPing)
@@ -91,12 +103,12 @@ func PingIP(ipPing string) CountInfo {
 		checkErr(err)
 		//设置五秒超时时间
 		start := time.Now()
-		conn.SetReadDeadline(time.Now().Add(time.Second * 5))
+		conn.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 		_, err = conn.Read(recv)
 		// fmt.Printf("recv pkg: %v\n", recv)
 		if err != nil {
 			info.LossPkg++
-			info.CountTime += float32(5)
+			info.CountTime += float32(timeout)
 			fmt.Printf("请求超时:%s\n", err)
 			continue
 		}
@@ -113,6 +125,7 @@ func PingIP(ipPing string) CountInfo {
 			info.MinTime = dur
 		}
 		fmt.Printf("来自 %s 的回复: 时间 = %.2fms\n", ipPing, dur)
+		time.Sleep(time.Duration(interval) * time.Second)
 	}
 	return info
 }
@@ -165,5 +178,5 @@ func printInfo(info CountInfo) {
 	lossRate := float32(info.LossPkg) / float32(info.CountPkg)
 	fmt.Print("\n-------------统计信息--------------\n")
 	fmt.Printf("共发送了 %d 个包, %d 个包已接收, 丢包率：%.2f%%, 总时间：%.2fms\n", info.CountPkg, rcvPkg, lossRate*100, info.CountTime)
-	fmt.Printf("最大延时：%.2fms 最小延时：%.2fms 平均延时：%.2fms\n", info.MaxTime, info.MinTime, (float32(info.CountTime)-float32(info.LossPkg)*5)/float32(rcvPkg))
+	fmt.Printf("最大延时：%.2fms 最小延时：%.2fms 平均延时：%.2fms\n", info.MaxTime, info.MinTime, (float32(info.CountTime)-float32(int(info.LossPkg)*timeout))/float32(rcvPkg))
 }
