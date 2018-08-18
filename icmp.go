@@ -55,9 +55,7 @@ func main() {
 		}
 	}
 	if ipPing == "" {
-		// fmt.Println("please input ping Addr, like \"ping=XXX.XXX.XXX.XXX\"")
 		fmt.Printf("No \"ip\" Args,Exiting\nUsage:\n\tip=\"remote ip\"\n\ttimeout=\"timeout(ms)default 3ms\"\n\tt=\"ping time\"\n")
-		// time.Sleep(3e9)
 		os.Exit(1)
 	}
 	if t == 0 {
@@ -87,11 +85,11 @@ func PingIP(ipPing string) CountInfo {
 
 	conn, err := net.Dial("ip:icmp", ipPing)
 	fmt.Printf("远程地址:%s\n", addr)
-	defer conn.Close()
 	if err != nil {
-		fmt.Printf("网络不可达:%s", err)
+		fmt.Printf("网络不可达:%v\n", err)
 		os.Exit(1)
 	}
+	defer conn.Close()
 
 	recv := make([]byte, 40)
 	for i := t; i > 0; i-- {
